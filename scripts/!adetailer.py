@@ -592,9 +592,9 @@ class AfterDetailerScript(scripts.Script):
             ad_prompts, ad_negatives = self.get_prompt(p, valid_args)
             p2.image_mask = masks[j]
             p2.init_images[0] = self.ensure_rgb_image(p2.init_images[0])
-            self.i2i_prompts_replace(p2, ad_prompts, ad_negatives, j)
             print("prompts: %s"%ad_prompts)
             print("neg_prompts: %s"%ad_negatives)
+            self.i2i_prompts_replace(p2, ad_prompts, ad_negatives, j)
 
             if re.match(r"^\s*\[SKIP\]\s*$", p2.prompt):
                 continue
