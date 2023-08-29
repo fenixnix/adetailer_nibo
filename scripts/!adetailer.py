@@ -530,7 +530,7 @@ class AfterDetailerScript(scripts.Script):
             extra_params = self.extra_params(arg_list)
             p.extra_generation_params.update(extra_params)
 
-    def _postprocess_image(self, p, pp, args: ADetailerArgs, *, n: int = 0) -> bool:
+    def _postprocess_image(self, p, pp, valid_arg_list, args: ADetailerArgs, *, n: int = 0) -> bool:
         """
         Returns
         -------
@@ -584,10 +584,17 @@ class AfterDetailerScript(scripts.Script):
             print(f"mediapipe: {steps} detected.")
 
         p2 = copy(i2i)
+
         for j in range(steps):
+            valid_args = valid_arg_list[0]
+            if j<len(valid_arg_list):
+                valid_args = valid_arg_list[j]
+            ad_prompts, ad_negatives = self.get_prompt(p, valid_args)
             p2.image_mask = masks[j]
             p2.init_images[0] = self.ensure_rgb_image(p2.init_images[0])
             self.i2i_prompts_replace(p2, ad_prompts, ad_negatives, j)
+            print("prompts: %s"%ad_prompts)
+            print("neg_prompts: %s"%ad_negatives)
 
             if re.match(r"^\s*\[SKIP\]\s*$", p2.prompt):
                 continue
@@ -597,6 +604,7 @@ class AfterDetailerScript(scripts.Script):
 
             try:
                 processed = process_images(p2)
+                print(type(processed))
             except NansException as e:
                 msg = f"[-] ADetailer: 'NansException' occurred with {ordinal(n + 1)} settings.\n{e}"
                 print(msg, file=sys.stderr)
@@ -632,11 +640,14 @@ class AfterDetailerScript(scripts.Script):
                 p.scripts.postprocess(copy(p), dummy)
 
         is_processed = False
+
         with CNHijackRestore(), pause_total_tqdm(), cn_allow_script_control():
+            valid_arg_list = []
             for n, args in enumerate(arg_list):
-                if args.ad_model == "None":
-                    continue
-                is_processed |= self._postprocess_image(p, pp, args, n=n)
+                if args.ad_model != "None":
+                    valid_arg_list.append(args)
+            for args in valid_arg_list:
+                is_processed |= self._postprocess_image(p, pp,valid_arg_list,args,n=n)
 
         if is_processed:
             self.save_image(
